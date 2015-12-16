@@ -9,5 +9,6 @@
 	<classpathentry kind="lib" path="lib/poi-ooxml-schemas-3.13-20150929.jar"/>
 	<classpathentry kind="lib" path="lib/poi-scratchpad-3.13-20150929.jar"/>
 	<classpathentry kind="lib" path="lib/xmlbeans-2.6.0.jar"/>
+	<classpathentry kind="lib" path="lib/slf4j-api-1.7.13.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

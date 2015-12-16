@@ -1,5 +1,6 @@
 package org.randomselector;
 
+import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -14,6 +15,7 @@ import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class Main {
@@ -23,17 +25,26 @@ public class Main {
 }
 
 class mainFrame extends JFrame implements ActionListener {
-
+	
 	private JFileChooser fileChooser = null;
 	private JButton openButton = null;
 	private JButton saveButton = null;
 	private JButton exitButton = null;
+	private JLabel rowNum = null;
+	private JPanel northPanel = null;
+	private JPanel westPanel = null;
+	private JPanel eastPanel = null;
+	private JPanel southPanel = null;
+	private JPanel centerPanel = null;
+	
+	private int rows = 0;
 
 	public mainFrame() {
 		super("핳핳핳");
 		this.init();
 		this.start();
-		this.setSize(400, 200);
+		this.setSize(800, 700);
+		this.setLocationRelativeTo(null);
 		this.setVisible(true);
 		this.setDefaultCloseOperation(this.EXIT_ON_CLOSE);
 	}
@@ -43,10 +54,27 @@ class mainFrame extends JFrame implements ActionListener {
 		openButton = new JButton("open");
 		saveButton = new JButton("save");
 		exitButton = new JButton("exit");
-		getContentPane().setLayout(new FlowLayout());
-		add(openButton);
-		add(saveButton);
-		add(exitButton);
+		rowNum = new JLabel("파일 오픈");
+		getContentPane().setLayout(new BorderLayout());
+		
+		northPanel = new JPanel(new FlowLayout());
+		northPanel.add(openButton);
+		northPanel.add(saveButton);
+		northPanel.add(exitButton);
+		add(northPanel, BorderLayout.NORTH);
+		
+		westPanel = new JPanel(new FlowLayout());
+		add(westPanel, BorderLayout.WEST);
+		
+		eastPanel = new JPanel(new FlowLayout());
+		add(eastPanel, BorderLayout.EAST);
+		
+		southPanel = new JPanel(new FlowLayout());
+		add(southPanel, BorderLayout.SOUTH);
+		
+		centerPanel = new JPanel(new FlowLayout());
+		centerPanel.add(rowNum);
+		add(centerPanel, BorderLayout.CENTER);	
 	}
 
 	public void start() {
@@ -90,7 +118,7 @@ class mainFrame extends JFrame implements ActionListener {
 	public String fileMatch(String openFilePath){
 		String result = null;
 		
-		int index = openFilePath.indexOf(".");
+		int index = openFilePath.lastIndexOf(".");
 		result = openFilePath.substring(index+1);		
 		return result;
 	}
