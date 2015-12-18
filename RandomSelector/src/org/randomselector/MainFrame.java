@@ -364,7 +364,7 @@ public class MainFrame extends JFrame implements ActionListener {
 		confirmList.clear();
 	}
 	
-	public void randomSelect(ArrayList<String> firstList, String insertNum){
+	public void randomSelect(final ArrayList<String> firstList, final String insertNum){
 		new Thread(new Runnable(){
 			public void run(){
 				Map<String, Object> map = null;
