@@ -7,10 +7,12 @@ import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -19,15 +21,11 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.filechooser.FileNameExtensionFilter;
-
-import org.apache.poi.xssf.usermodel.XSSFCell;
-import org.apache.poi.xssf.usermodel.XSSFRow;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class MainFrame extends JFrame implements ActionListener {
 	/**
@@ -36,8 +34,7 @@ public class MainFrame extends JFrame implements ActionListener {
 	private static final long serialVersionUID = 1L;
 
 	public static void main(String[] args) {
-		@SuppressWarnings("unused")
-		MainFrame m = new MainFrame();
+		new MainFrame();
 	}
 	
 	private JFileChooser fileChooser = null; // 파일 선택 창
@@ -66,15 +63,25 @@ public class MainFrame extends JFrame implements ActionListener {
 	private JTextArea console = null; // 콘솔
 	private JTextField insertNum = null;// 뽑을 인원수 체크
 	//파일 정보 관련 선언
-	private JLabel fileName = null; // 파일 이름
-	private JLabel fileSize = null; // 파일 사이즈
 	private JLabel totalCount = null; // 총 인원 수
-	private JLabel sheetName = null; // sheet이름
 	private JLabel subCount = null; // 제거된 인원 수
+	private JLabel remainingCnt = null; // 남은 인원 수
+	private JLabel originCheckEncoding = null; // 인코딩 확인
+	private JLabel confirmCheckEncoding = null;
 	private JLabel title1 = null; // 타이틀1
 	private JLabel title2 = null; // 타이틀2
 	private JLabel title3 = null; // 타이틀3
 	private JLabel information = null;
+	
+	private JProgressBar progressBar = null;
+	int progressValue;
+	private JLabel originFileName = null;
+	private JLabel originFilePath = null;
+	private JLabel confirmFileName = null;
+	private JLabel confirmFilePath = null;
+	private JLabel confirmPeopleNum = null;
+	private ArrayList<String> firstList = null;
+	private ArrayList<String> confirmList = null;
 	
 	@SuppressWarnings("static-access")
 	public MainFrame() {
@@ -103,6 +110,9 @@ public class MainFrame extends JFrame implements ActionListener {
 		
 		//위쪽
 		northPanel = new JPanel(new FlowLayout());
+		progressBar = new JProgressBar(JProgressBar.HORIZONTAL,0,100);
+		progressBar.setStringPainted(true);
+		northPanel.add(progressBar);
 		add(northPanel, BorderLayout.NORTH);
 		
 		//왼쪽
@@ -165,43 +175,60 @@ public class MainFrame extends JFrame implements ActionListener {
 		information.setFont(new Font("consol", Font.BOLD, 25));
 		centerPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 10));
 		
-		fileName = new JLabel("파일 이름"); // 파일 이름
-		fileSize = new JLabel("파일 사이즈"); // 파일 사이즈
+		originFileName = new JLabel("원본 파일 이름"); // 파일 이름
+		originFilePath = new JLabel("원본 파일 위치"); // 파일 사이즈
 		totalCount = new JLabel("총 인원 수"); // 총 인원 수
-		sheetName = new JLabel("Sheet 이름"); // sheet이름
+		confirmFileName = new JLabel("이전 당첨자 파일 이름");
+		confirmFilePath = new JLabel("이전 당첨자 파일 위치");
+		confirmPeopleNum = new JLabel("이전 당첨자 인원 수");
 		subCount = new JLabel("제거된 인원 수"); // 제거된 인원 수
+		remainingCnt = new JLabel("남은 인원 수"); // 남은 인원 수
+		originCheckEncoding = new JLabel("파일 인코딩 형식"); // 파일 인코딩 형식
+		confirmCheckEncoding = new JLabel("파일 인코딩 형식");
 		centerPanel.add(information);
-		centerPanel.add(fileName);
-		centerPanel.add(fileSize);
+		centerPanel.add(originFileName);
+		centerPanel.add(originFilePath);
+		centerPanel.add(originCheckEncoding);
 		centerPanel.add(totalCount);
-		centerPanel.add(sheetName);
+		centerPanel.add(confirmFileName);
+		centerPanel.add(confirmFilePath);
+		centerPanel.add(confirmCheckEncoding);
+		centerPanel.add(confirmPeopleNum);
 		centerPanel.add(subCount);
+		centerPanel.add(remainingCnt);
 		add(centerPanel, BorderLayout.CENTER);	
 	}
 
 	public void start() {
+		firstList = new ArrayList<String>();
+		confirmList = new ArrayList<String>();
 		openButton.addActionListener(this);
 		saveButton.addActionListener(this);
 		overlapOpenButton.addActionListener(this);
+		startButton.addActionListener(this);
 
-		fileChooser.setFileFilter(new FileNameExtensionFilter("엑셀 2007-2013 통합문서(*.xlsx)", "xlsx"));
-		fileChooser.setFileFilter(new FileNameExtensionFilter("엑셀 2003-2007 통합문서(*.xls)", "xls"));
+//		fileChooser.setFileFilter(new FileNameExtensionFilter("엑셀 2007-2013 통합문서(*.xlsx)", "xlsx"));
+//		fileChooser.setFileFilter(new FileNameExtensionFilter("엑셀 2003-2007 통합문서(*.xls)", "xls"));
+		fileChooser.setFileFilter(new FileNameExtensionFilter("CSV (쉼표로 분리)(*.csv)", "csv"));
 		// 파일 필터
 		fileChooser.setMultiSelectionEnabled(false);// 다중 선택 불가
 	}
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
+		FileMatch fileMatch = new FileMatch();
 		
 		if (e.getSource() == openButton) {
 			if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
 				// showopendialog 열기 창을 열고 확인 버튼을 눌렀는지 확인
-				String openFilePath = fileChooser.getSelectedFile().toString();
-				if(fileMatch(openFilePath).equals("xls")){
+				File openFilePath = fileChooser.getSelectedFile();
+				/*if(fileMatch.fileMatch(openFilePath.toString()).equals("xls")){
 					//xls파일
-				}else if(fileMatch(openFilePath).equals("xlsx")){
+				}else if(fileMatch.fileMatch(openFilePath.toString()).equals("xlsx")){
 					//xlsx파일
-					openFile(openFilePath);
+				}*/
+				if(fileMatch.fileMatch(openFilePath.toString()).equals("csv")){
+					firstReadFile(openFilePath);
 				}
 			}
 		} else if (e.getSource() == saveButton) {
@@ -214,81 +241,116 @@ public class MainFrame extends JFrame implements ActionListener {
 		} else if(e.getSource() == overlapOpenButton){
 			if(fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION){
 				//중복 제거 버튼 클릭
+				File openFilePath = fileChooser.getSelectedFile();
+				if(fileMatch.fileMatch(openFilePath.toString()).equals("csv")){
+					lastReadFile(openFilePath);
+				}
 			}
 		}
-	}
-	
-	public String fileMatch(String openFilePath){
-		String result = null;
-		
-		int index = openFilePath.lastIndexOf(".");
-		result = openFilePath.substring(index+1);		
-		return result;
 	}
 	
 	public void addLog(String log){
 		console.append(log+"\n");
-		console.setCaretPosition(console.getDocument().getLength());
 	}
-	
-	public void openFile(String filePath) {
-		System.out.println("testing... XlsxOpenClass in openXlsxMethod.." + filePath);
-		long start = System.currentTimeMillis();
-		File f = new File(filePath);
-		
-		int rowIndex = 0;
-		int colIndex = 0;
-		try {
-			FileInputStream fis = new FileInputStream(f);
-			XSSFWorkbook wb = new XSSFWorkbook(fis);
-			XSSFSheet sheet = wb.getSheetAt(0);
-			int rows = sheet.getPhysicalNumberOfRows();
-			
-			System.out.println("sheet수 : " + wb.getNumberOfSheets());
-			System.out.println("sheet이름 : " + wb.getSheetName(0));
-			System.out.println("getLastRowNum : "+sheet.getLastRowNum());
-			System.out.println("rows : " + rows);
-			System.out.println("걸린 시간 : " + (System.currentTimeMillis() - start / 1000.0));
-			
-			for(rowIndex = 0;rowIndex < rows;rowIndex++){
-				XSSFRow row = sheet.getRow(rowIndex);
-				if(row != null){
-					int cells = row.getPhysicalNumberOfCells();
-					for(colIndex = 0;colIndex < cells;colIndex++){
-						XSSFCell cell = row.getCell(colIndex);
-						System.out.println("cell value : " + cell);
-						String value = "";
-						if(cell == null){
-							continue;
-						}else{
-							switch (cell.getCellType()){
-			                case XSSFCell.CELL_TYPE_FORMULA:
-			                    value=cell.getCellFormula();
-			                    break;
-			                case XSSFCell.CELL_TYPE_NUMERIC:
-			                    value=cell.getNumericCellValue()+"";
-			                    break;
-			                case XSSFCell.CELL_TYPE_STRING:
-			                    value=cell.getStringCellValue()+"";
-			                    break;
-			                case XSSFCell.CELL_TYPE_BLANK:
-			                    value=cell.getBooleanCellValue()+"";
-			                    break;
-			                case XSSFCell.CELL_TYPE_ERROR:
-			                    value=cell.getErrorCellValue()+"";
-			                    break;
-			                }
+
+	private void firstReadFile(final File f){
+		new Thread(new Runnable(){
+			public void run(){
+				BufferedReader br = null;
+				
+				originFileName.setText("원본 파일 이름 : " + f.getName());
+				originFilePath.setText("원본 파일 경로 : " + f.getAbsolutePath());
+				originCheckEncoding.setText("파일 인코딩 형식 : " + new FindEncoding().confirmEncoding(f.getAbsolutePath()));
+				try{
+					br = new BufferedReader(new InputStreamReader(new FileInputStream(f)));
+					long size = f.length();
+					int len = 0;
+					int lineNum = 0;
+					String strLine = null;
+					while((strLine = br.readLine()) != null){
+						firstList.add(strLine);
+						lineNum++;
+						len += strLine.length() + 2;
+						progressValue = (int)((100*len)/size);
+						progressBar.setValue(progressValue);
+						totalCount.setText("총 인원 수 : " + lineNum);
+						if(progressValue == 100){
+							addLog("** 정렬을 시작합니다. **\n** 정렬이 완료 될 때 까지 잠시만 기다려 주세요. **");
+							MergeSort m = new MergeSort(firstList);
+							m.sort();
+							addLog("** 정렬이 완료되었습니다. **");
 						}
-						addLog("각 셀 내용 : "+value);
 					}
+					br.close();
+				}catch(IOException e){
+					addLog(e.getMessage());
 				}
 			}
-		} catch (FileNotFoundException e) {
-			addLog("파일을 찾을 수 없습니다.");
-			e.printStackTrace();
-		} catch(IOException e){
-			addLog("입출력 오류");
-			e.printStackTrace();
+		}).start();
+	}
+	
+	private void lastReadFile(final File f) {
+		new Thread(new Runnable(){
+			public void run(){
+				BufferedReader br = null;
+				
+				confirmFileName.setText("이전 당첨자 파일 이름 : " + f.getName());
+				confirmFilePath.setText("이전 당첨자 파일 위치 : " + f.getAbsolutePath());
+				confirmCheckEncoding.setText("파일 인코딩 형식 : " + new FindEncoding().confirmEncoding(f.getAbsolutePath()));
+				try{
+					br = new BufferedReader(new InputStreamReader(new FileInputStream(f)));
+					long size = f.length();
+					int len = 0;
+					int lineNum = 0;
+					String strLine = null;
+					while((strLine = br.readLine()) != null){
+						confirmList.add(strLine);
+						lineNum++;
+						len += strLine.length() + 2;
+						progressValue = (int)((100*len)/size);
+						progressBar.setValue(progressValue);
+						confirmPeopleNum.setText("이전 당첨자 인원 수 : " + lineNum);
+						if(progressValue == 100){
+							addLog("** 정렬을 시작합니다. **\n** 잠시만 기다려 주세요. **");
+							MergeSort m = new MergeSort(confirmList);
+							m.sort();
+							addLog("** 정렬이 완료되었습니다. **");
+							addLog("** 중복 제거를 시작합니다. 잠시만 기다려 주세요. **");
+							deleteDuplication(firstList, confirmList);
+							addLog("** 중복 제거가 완료되었습니다. **");
+						}
+					}
+					br.close();
+				}catch(IOException e){
+					e.printStackTrace();
+				}
+			}
+		}).start();
+	}
+	
+	public void deleteDuplication(ArrayList<String> firstList, ArrayList<String>confirmList){
+		int duplicateIndex = 0;
+		System.out.println("firstList.size : " + firstList.size());
+		System.out.println("confirmList.size : " + confirmList.size());
+		
+		for(int i=0;i<firstList.size();i++){
+			for(int j=0;j<confirmList.size();j++){
+				try{
+					if(firstList.get(i).equals(confirmList.get(j))){
+						duplicateIndex++;
+						firstList.remove(i);
+						subCount.setText("제거된 인원 수 : " + String.valueOf(duplicateIndex));
+						remainingCnt.setText("남은 인원 수 : " + String.valueOf(firstList.size()));
+					}
+				}catch(Exception e){
+					e.printStackTrace();
+				}
+			}
 		}
-	}	
+		confirmList.clear();
+	}
+	
+	public void randomSelect(ArrayList<String> firstList){
+		
+	}
 }
