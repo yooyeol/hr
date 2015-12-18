@@ -10,9 +10,14 @@ import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -27,6 +32,11 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
 public class MainFrame extends JFrame implements ActionListener {
 	/**
 	 * 
@@ -39,7 +49,6 @@ public class MainFrame extends JFrame implements ActionListener {
 	
 	private JFileChooser fileChooser = null; // 파일 선택 창
 	private JButton openButton = null; // 처음 파일 오픈 버튼
-	private JButton saveButton = null; // 저장 버튼
 	private JButton overlapOpenButton = null; // 중복 파일 오픈 버튼
 	private JButton startButton = null; // 랜덤 뽑기 시작 버튼
 	
@@ -66,6 +75,7 @@ public class MainFrame extends JFrame implements ActionListener {
 	private JLabel totalCount = null; // 총 인원 수
 	private JLabel subCount = null; // 제거된 인원 수
 	private JLabel remainingCnt = null; // 남은 인원 수
+	private JLabel resultMember = null;
 	private JLabel originCheckEncoding = null; // 인코딩 확인
 	private JLabel confirmCheckEncoding = null;
 	private JLabel title1 = null; // 타이틀1
@@ -125,11 +135,9 @@ public class MainFrame extends JFrame implements ActionListener {
 		firEastPanel1 = new JPanel(new FlowLayout());
 		firEastPanel2 = new JPanel(new FlowLayout());
 		openButton = new JButton("열기");
-		saveButton = new JButton("저장");
 		title1 = new JLabel("1. 파일 불러오기 & 저장");
 		firEastPanel1.add(title1);
 		firEastPanel2.add(openButton);
-		firEastPanel2.add(saveButton);
 		firEastPanel.add(firEastPanel1);
 		firEastPanel.add(firEastPanel2);
 		eastPanel.add(firEastPanel);
@@ -185,6 +193,7 @@ public class MainFrame extends JFrame implements ActionListener {
 		remainingCnt = new JLabel("남은 인원 수"); // 남은 인원 수
 		originCheckEncoding = new JLabel("파일 인코딩 형식"); // 파일 인코딩 형식
 		confirmCheckEncoding = new JLabel("파일 인코딩 형식");
+		resultMember = new JLabel("당첨된 인원");
 		centerPanel.add(information);
 		centerPanel.add(originFileName);
 		centerPanel.add(originFilePath);
@@ -196,6 +205,7 @@ public class MainFrame extends JFrame implements ActionListener {
 		centerPanel.add(confirmPeopleNum);
 		centerPanel.add(subCount);
 		centerPanel.add(remainingCnt);
+		centerPanel.add(resultMember);
 		add(centerPanel, BorderLayout.CENTER);	
 	}
 
@@ -203,7 +213,6 @@ public class MainFrame extends JFrame implements ActionListener {
 		firstList = new ArrayList<String>();
 		confirmList = new ArrayList<String>();
 		openButton.addActionListener(this);
-		saveButton.addActionListener(this);
 		overlapOpenButton.addActionListener(this);
 		startButton.addActionListener(this);
 
@@ -231,14 +240,14 @@ public class MainFrame extends JFrame implements ActionListener {
 					firstReadFile(openFilePath);
 				}
 			}
-		} else if (e.getSource() == saveButton) {
+		} /*else if (e.getSource() == saveButton) {
 			if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
 				// showSaveDialog 저장 창을 열고 확인 버튼을 눌렀는지 확인
 				String saveFilePath = fileChooser.getSelectedFile().toString() + "."
 						+ fileChooser.getFileFilter().getDescription();
 				System.out.println(saveFilePath);
 			}
-		} else if(e.getSource() == overlapOpenButton){
+		}*/ else if(e.getSource() == overlapOpenButton){
 			if(fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION){
 				//중복 제거 버튼 클릭
 				File openFilePath = fileChooser.getSelectedFile();
@@ -246,11 +255,16 @@ public class MainFrame extends JFrame implements ActionListener {
 					lastReadFile(openFilePath);
 				}
 			}
+		} else if(e.getSource() == startButton){
+			addLog("** 당첨인원 선택을 시작합니다.");
+			randomSelect(firstList, insertNum.getText());
+			addLog("** 당첨인원 선택이 완료되었습니다.");
 		}
 	}
 	
 	public void addLog(String log){
 		console.append(log+"\n");
+		console.setCaretPosition(console.getDocument().getLength());
 	}
 
 	private void firstReadFile(final File f){
@@ -350,7 +364,67 @@ public class MainFrame extends JFrame implements ActionListener {
 		confirmList.clear();
 	}
 	
-	public void randomSelect(ArrayList<String> firstList){
+	public void randomSelect(ArrayList<String> firstList, String insertNum){
+		new Thread(new Runnable(){
+			public void run(){
+				Map<String, Object> map = null;
+				ArrayList<Map<String, Object>> list = new ArrayList<Map<String, Object>>();
+				ArrayList<String> columnList = new ArrayList<String>();
+				Collections.shuffle(firstList);
+				System.out.println("=================================");
+				for(int i=0;i<Integer.parseInt(insertNum);i++){
+					map = new HashMap<String, Object>();
+					map.put("member", firstList.get(i));
+					resultMember.setText("당첨된 인원 : " + String.valueOf(i+1));
+					list.add(map);
+				}
+				if(list != null && list.size() > 0){
+					Map<String, Object> m = list.get(0);
+					for(String k : m.keySet()){
+						columnList.add(k);
+					}
+				}
+				XSSFWorkbook workbook = new XSSFWorkbook();
+				XSSFSheet sheet = workbook.createSheet("이벤트 당첨자");
+				XSSFRow row = null;
+				XSSFCell cell = null;
+				FileOutputStream fos = null;
+				
+				if(list != null && list.size() > 0){
+					int i=0;
+					for(Map<String, Object>mapObject : list){
+						row = sheet.createRow((short)i);
+						i++;
+						if(columnList != null && columnList.size() > 0){
+							for(int j=0;j<columnList.size();j++){
+								cell = row.createCell(j);
+								cell.setCellValue(String.valueOf(mapObject.get(columnList.get(j))));
+							}
+						}
+					}
+				}
+				try {
+					fos = new FileOutputStream("result.xlsx");
+					workbook.write(fos);
+				} catch (FileNotFoundException e) {
+					addLog("@@ 파일이 이미 존재합니다. @@");
+					addLog("@@ result.xlsx 파일을 다른곳으로 옮기거나 삭제해 주세요. @@");
+					e.printStackTrace();
+				} catch(IOException e){
+					e.printStackTrace();
+				} finally{
+					if(fos != null){
+						try {
+							fos.close();
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					}
+					addLog("#### 엑셀파일 생성 성공!! ####");
+				}
+				
+			}
+		}).start();
 		
 	}
 }
