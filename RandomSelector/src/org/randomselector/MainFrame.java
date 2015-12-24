@@ -422,7 +422,6 @@ public class MainFrame extends JFrame implements ActionListener {
 					}
 					addLog("#### 竣伎颇老 积己 己傍!! ####");
 				}
-				
 			}
 		}).start();
 		
